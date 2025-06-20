@@ -1,16 +1,17 @@
-# GPDR – Geographic Parity-based Disjoint Routing for ns-3.29
+# SPY – Same Parity Yonder Routing Protocol for ns-3.29
 
-This repository provides a **plugin for ns-3.29** that implements **GPDR (Geographic Parity-based Disjoint Routing)** — a **stateless, greedy, geographic routing protocol** that enhances packet delivery using **dual node-disjoint paths with same-hop parity constraints**.
+This repository provides a **plugin for ns-3.29** that implements **SPY (Same Parity Yonder) Routing Protocol** — a **stateless, greedy, geographic routing protocol** that enhances packet delivery using **dual node-disjoint paths with same-hop parity constraints**.
 
 ---
 
-## 🛰️ What is GPDR?
+## 🛰️ What is SPY Routing Protocol?
 
-**GPDR** is a geographic routing protocol designed for wireless ad hoc networks. It differs from traditional stateless greedy routing (like GPSR) by:
+**SPY** is a geographic routing protocol designed for wireless ad hoc networks. It differs from traditional stateless greedy routing (like GPSR) by:
 
 - Using **node positions** not just to forward packets greedily, but to **compute two disjoint paths** from source to destination.
 - Ensuring **same-parity hop counts** for the dual paths (e.g., both paths are even or both are odd in length).
 - Improving **redundancy and reliability** with minimal per-node state overhead.
+- Maximizing **throughput** by leveraging dual disjoint paths for parallel, reliable packet delivery
 
 ---
 
@@ -46,7 +47,7 @@ Clone the GPDR repository inside the src/ directory:
 
 ```bash
 cd src
-https://github.com/ojoaosoares/GPDR.git
+git clone https://github.com/ojoaosoares/SPY-Routing-Protocol
 ```
 
 (Optional) If you also want GPSR
@@ -54,7 +55,7 @@ https://github.com/ojoaosoares/GPDR.git
 ```bash
 git clone https://github.com/dwosion/ns3.29-with-gpsr.git
 cd ns3.29-with-gpsr/ns-3.29/src
-git clone https://github.com/YOUR_USERNAME/gpdr.git
+git clone https://github.com/ojoaosoares/SPY-Routing-Protocol
 ```
 
 ## 3. Configure and Build
