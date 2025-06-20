@@ -256,6 +256,75 @@ namespace ns3 {
       return (m_dstPosx == o.m_dstPosx && m_dstPosy == o.m_dstPosy && m_updated == o.m_updated && m_recPosx == o.m_recPosx && m_recPosy == o.m_recPosy && m_inRec == o.m_inRec && m_lastPosx == o.m_lastPosx && m_lastPosy == o.m_lastPosy);
     }
 
+    //-----------------------------------------------------------------------------
+    // DISJOINT
+    //-----------------------------------------------------------------------------
+
+    DisjointHeader::DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh = 0, Ipv4Address lf = 0) : path_id(p_id), parity(pa), last_hop(lh), last_forwarder(lf) 
+    {
+    }
+
+    TypeId DisjointHeader::GetTypeId ()
+    {
+      static TypeId tid = TypeId ("ns3::spy::DisjointHeader")
+        .SetParent<Header> ()
+        .AddConstructor<DisjointHeader> ()
+      ;
+      return tid;
+    }
+
+    TypeId DisjointHeader::GetInstanceTypeId () const
+    {
+      return GetTypeId ();
+    }
+
+    uint32_t DisjointHeader::GetSerializedSize () const
+    {
+      return 10;
+    }
+
+    void DisjointHeader::Serialize (Buffer::Iterator i) const
+    {
+      i.WriteU8 ((uint8_t) path_id);
+      i.WriteU8 ((uint8_t) parity);
+      i.WriteU32 ((uint32_t) last_hop.Get());
+      i.WriteU32 ((uint32_t) last_forwarder.Get());
+    }
+
+    uint32_t DisjointHeader::Deserialize (Buffer::Iterator start)
+    {
+      Buffer::Iterator i = start;
+
+      path_id = i.ReadU8();
+      parity = i.ReadU8();
+      last_hop = Ipv4Address(i.ReadU32());
+      last_forwarder = Ipv4Address(i.ReadU32());
+
+      uint32_t dist = i.GetDistanceFrom(start);
+      NS_ASSERT(dist == GetSerializedSize());
+      return dist;
+    }
+
+    void DisjointHeader::Print (std::ostream &os) const
+    {
+      os << " PathId: "  << path_id
+        << " Parity: " << parity
+        << " Last Hop: " << last_hop
+        << " Last Forwarder: " << last_forwarder;
+    }
+
+    bool DisjointHeader::operator== (DisjointHeader const & o) const
+    {
+      return (path_id == o.path_id && parity == o.parity && last_hop == o.last_hop && last_forwarder == o.last_forwarder);
+    }
+
+    std::ostream &
+    operator<< (std::ostream & os, DisjointHeader const & h)
+    {
+      h.Print (os);
+      return os;
+    }
+
   }
 }
 

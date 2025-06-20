@@ -18,6 +18,7 @@ namespace ns3 {
     {
       SPY_TYPE_HELLO  = 1,         //!< SPY_TYPE_HELLO
       SPY_TYPE_POS = 2,            //!< SPY_TYPE_POS
+      SPY_TYPE_DISJOINT            //!< SPY_TYPE_DISJOINT
     };
 
     /**
@@ -198,6 +199,74 @@ namespace ns3 {
     };
 
     std::ostream & operator<< (std::ostream & os, PositionHeader const &);
+    
+    class DisjointHeader : public Header
+    {
+      public:
+        /// c-tor
+        DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh = 0, Ipv4Address lf = 0);
+
+        ///\name Header serialization/deserialization
+        //\{
+        static TypeId GetTypeId ();
+        TypeId GetInstanceTypeId () const;
+        uint32_t GetSerializedSize () const;
+        void Serialize (Buffer::Iterator start) const;
+        uint32_t Deserialize (Buffer::Iterator start);
+        void Print (std::ostream &os) const;
+        //\}
+
+        ///\name Fields
+        //\{
+        void SetPathId (uint8_t pid)
+        {
+          path_id = pid;
+        }
+
+        uint8_t GetPathId () const
+        {
+          return path_id;
+        }
+
+        void SetParity (uint8_t p)
+        {
+          parity = p;
+        }
+
+        uint8_t GetParity () const
+        {
+          return parity;
+        }
+
+        void SetLastHop (Ipv4Address lh)
+        {
+          last_hop = lh;
+        }
+
+        Ipv4Address GetLastHop () const
+        {
+          return last_hop;
+        }
+
+        void SetLastForwarder (Ipv4Address lf)
+        {
+          last_forwarder = lf;
+        }
+
+        Ipv4Address GetLastForwarder() const
+        {
+          return last_forwarder;
+        }
+
+        bool operator== (DisjointHeader const & o) const;
+      private:
+        uint8_t path_id;
+        uint8_t parity;
+        Ipv4Address last_hop;
+        Ipv4Address last_forwarder;
+    };
+
+    std::ostream & operator<< (std::ostream & os, DisjointHeader const & h);
 
   }
 }
