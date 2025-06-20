@@ -18,6 +18,8 @@
 namespace ns3 {
   namespace spy {
 
+    typedef std::tuple<Ipv4Address, Ipv4Address, uint32_t> PacketKey;
+
     /*
     * \ingroup spy
     * \brief Position table used by SPY
@@ -57,7 +59,7 @@ namespace ns3 {
          * \param id Ipv4Address of the node to check
          * \return True if the node is neighbour, false otherwise
          */
-        bool isNeighbour (Ipv4Address id);
+        bool isNeighbour (const PacketKey& pktKey, Ipv4Address id);
 
         /**
          * \brief remove entries with expired lifetime
@@ -83,7 +85,7 @@ namespace ns3 {
          * \param nodePos the position of the node that has the packet
          * \return Ipv4Address of the next hop, Ipv4Address::GetZero () if no nighbour was found in greedy mode
          */
-        Ipv4Address BestNeighbor (Vector position, Vector nodePos);
+        Ipv4Address BestNeighbor (const PacketKey& pktKey, Vector position, Vector nodePos);
 
         bool IsInSearch (Ipv4Address id);
 
@@ -100,10 +102,19 @@ namespace ns3 {
          * \param nodePos the position of the destination node
          * \return Ipv4Address of the next hop, Ipv4Address::GetZero () if no nighbour was found in greedy mode
          */
-        Ipv4Address BestAngle (Vector previousHop, Vector nodePos);
+        Ipv4Address BestAngle (const PacketKey& pktKey, Vector previousHop, Vector nodePos);
 
         //Gives angle between the vector CentrePos-Refpos to the vector CentrePos-node counterclockwise
         double GetAngle (Vector centrePos, Vector refPos, Vector node);
+
+        // prohibited functions
+        void AddNotSend(const PacketKey& pktKey, const Ipv4Address& receiver);
+
+        bool HasNotSend(const PacketKey& pktKey, const Ipv4Address& receiver);
+
+        void AddNotForward(const PacketKey& pktKey);
+
+        bool HasNotForward(const PacketKey& pktKey);
 
       private:
         Time m_entryLifeTime;
@@ -112,6 +123,10 @@ namespace ns3 {
         Callback<void, WifiMacHeader const &> m_txErrorCallback;
         // Process layer 2 TX error notification
         void ProcessTxError (WifiMacHeader const&);
+        
+        // prohibited maps
+        std::map<std::pair<PacketKey, Ipv4Address>, Time> notSend;
+        std::map<PacketKey, Time> notForward;
     };
 
   }   // spy
