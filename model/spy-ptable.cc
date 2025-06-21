@@ -152,10 +152,10 @@ namespace ns3 {
         {
             std::list<PacketKey> toErase;
 
-            for (std::map<PacketKey, Time>::iterator it = notForward.begin ();
+            for (std::map<PacketKey, std::pair<Ipv4Address, Time>>::iterator it = notForward.begin ();
                 it != notForward.end (); ++it)
             {
-                if (m_entryLifeTime + it->second <= Simulator::Now ())
+                if (m_entryLifeTime + it->second.second <= Simulator::Now ())
                 {
                     toErase.push_back(it->first);
                 }
@@ -346,22 +346,34 @@ namespace ns3 {
         return (it != notSend.end());
     }
 
-    void PositionTable::AddNotForward(const PacketKey& pktKey)
+    void PositionTable::AddNotForward(const PacketKey& pktKey, const Ipv4Address& sender)
     {
-        std::map<PacketKey, Time>::iterator it = notForward.find(pktKey);
+        std::map<PacketKey, std::pair<Ipv4Address, Time>>::iterator it = notForward.find(pktKey);
 
         if (it != notForward.end())
         {
             notForward.erase(it);
         }
 
-        notForward.insert(std::make_pair(pktKey, Simulator::Now()));
+        notForward.insert(std::make_pair(pktKey, std::make_pair(sender, Simulator::Now())));
     }
 
     bool PositionTable::HasNotForward(const PacketKey& pktKey) {
-        std::map<PacketKey, Time>::iterator it = notForward.find(pktKey);
+        std::map<PacketKey, std::pair<Ipv4Address, Time>>::iterator it = notForward.find(pktKey);
 
         return (it != notForward.end());  
+    }
+
+    Ipv4Address PositionTable::getLastSender(const PacketKey& pktKey) {
+
+      std::map<PacketKey, std::pair<Ipv4Address, Time>>::iterator it = notForward.find(pktKey);
+
+      if (it != notForward.end())
+      {
+          return it->second.first;
+      }
+
+      return Ipv4Address::GetZero();
     }
   }   // spy
 } // ns3

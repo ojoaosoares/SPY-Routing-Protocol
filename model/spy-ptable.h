@@ -112,9 +112,11 @@ namespace ns3 {
 
         bool HasNotSend(const PacketKey& pktKey, const Ipv4Address& receiver);
 
-        void AddNotForward(const PacketKey& pktKey);
+        void AddNotForward(const PacketKey& pktKey, const Ipv4Address& sender);
 
         bool HasNotForward(const PacketKey& pktKey);
+
+        Ipv4Address getLastSender(const PacketKey& pktKey);
 
       private:
         Time m_entryLifeTime;
@@ -126,7 +128,7 @@ namespace ns3 {
         
         // prohibited maps
         std::map<std::pair<PacketKey, Ipv4Address>, Time> notSend;
-        std::map<PacketKey, Time> notForward;
+        std::map<PacketKey, std::pair<Ipv4Address, Time>> notForward;
     };
 
   }   // spy

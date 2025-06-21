@@ -184,12 +184,22 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
               return false;
             }
           
+          DisjointHeader disHdr;
           if (tHeader.Get () == SPY_TYPE_POS)
-            {
+          {
               PositionHeader phdr;
               packet->RemoveHeader (phdr);
-            }
+            
+              packet->RemoveHeader(disHdr);
+          }
 
+          PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
+
+          Ipv4Address lastHop = disHdr.GetLastHop();
+
+          PacketKey inverse = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId() != 1);
+          m_neighbors.AddNotForward(inverse, lastHop);
+      
           if (dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
             {
               NS_LOG_LOGIC ("Unicast local delivery to " << dst);
@@ -954,21 +964,22 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           return true;
       }
 
-      
+      Ipv4Address lastHop = disHdr.GetLastHop();
+
       if (disHdr.GetLastHop() != disHdr.GetLastForwarder())
       {
           m_neighbors.AddNotSend(key, disHdr.GetLastForwarder());
       }
 
-      disHdr.SetLastHop(m_ipv4->GetAddress(1, 0).GetLocal());
-      disHdr.SetLastForwarder(m_ipv4->GetAddress(1, 0).GetLocal());
-      disHdr.SetParity(disHdr.GetParity() != 1);
-
-      if (m_ipv4->GetAddress(1, 0).GetLocal() != header.GetSource())
+      else if (m_ipv4->GetAddress(1, 0).GetLocal() != header.GetSource())
       {
         PacketKey inverse = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId() != 1);
-        m_neighbors.AddNotForward(inverse);
+        m_neighbors.AddNotForward(inverse, lastHop);
       }
+
+      disHdr.SetLastHop(m_ipv4->GetAddress(1, 0).GetLocal());
+      disHdr.SetLastForwarder(m_ipv4->GetAddress(1, 0).GetLocal());
+      disHdr.SetParity(disHdr.GetParity() != 1);      
 
       Vector myPos;
       Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
