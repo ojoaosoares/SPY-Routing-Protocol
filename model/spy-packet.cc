@@ -329,5 +329,64 @@ namespace ns3 {
       return os;
     }
 
+    //-----------------------------------------------------------------------------
+    // TAKESHORTCUT HEADER
+    //-----------------------------------------------------------------------------
+
+    TakeShortcut::TakeShortcut(Ipv4Address sc) : shortcut(sc)
+    {
+    }
+
+    TypeId TakeShortcut::GetTypeId ()
+    {
+      static TypeId tid = TypeId ("ns3::spy::TakeShortcut")
+        .SetParent<Header> ()
+        .AddConstructor<TakeShortcut> ()
+      ;
+      return tid;
+    }
+
+    TypeId TakeShortcut::GetInstanceTypeId () const
+    {
+      return GetTypeId ();
+    }
+
+    uint32_t TakeShortcut::GetSerializedSize () const
+    {
+      return 4;
+    }
+
+    void TakeShortcut::Serialize (Buffer::Iterator i) const
+    {
+      i.WriteU32 ((uint32_t) shortcut.Get());
+    }
+
+    uint32_t TakeShortcut::Deserialize (Buffer::Iterator start)
+    {
+      Buffer::Iterator i = start;
+      shortcut = Ipv4Address(i.ReadU32());
+    
+      uint32_t dist = i.GetDistanceFrom(start);
+      NS_ASSERT(dist == GetSerializedSize());
+      return dist;
+    }
+
+    void TakeShortcut::Print (std::ostream &os) const
+    {
+      os << " Shortcut: "  << shortcut;
+    }
+
+    bool TakeShortcut::operator== (TakeShortcut const & o) const
+    {
+      return (shortcut == o.shortcut);
+    }
+
+    std::ostream &
+    operator<< (std::ostream & os, TakeShortcut const & h)
+    {
+      h.Print (os);
+      return os;
+    }
+
   }
 }

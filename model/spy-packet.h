@@ -16,9 +16,10 @@ namespace ns3 {
 
     enum MessageType
     {
-      SPY_TYPE_HELLO  = 1,         //!< SPY_TYPE_HELLO
-      SPY_TYPE_POS = 2,            //!< SPY_TYPE_POS
-      SPY_TYPE_DISJOINT            //!< SPY_TYPE_DISJOINT
+      SPY_TYPE_HELLO  = 1,                        //!< SPY_TYPE_HELLO
+      SPY_TYPE_POS = 2,                           //!< SPY_TYPE_POS
+      SPY_TYPE_NEIGH_INTERSECTION = 3,            //!< SPY_TYPE_DISJOINT
+      SPY_TYPE_TAKE_SHORTCUT = 4                  //!< SPY_TYPE_TAKE_SHORTCUT
     };
 
     /**
@@ -267,7 +268,40 @@ namespace ns3 {
         Ipv4Address last_forwarder;
     };
 
-    std::ostream & operator<< (std::ostream & os, DisjointHeader const & h);
+    class TakeShortcut : public Header
+    {
+      public:
+        /// c-tor
+        TakeShortcut(Ipv4Address sc = Ipv4Address::GetZero());
+
+        ///\name Header serialization/deserialization
+        //\{
+        static TypeId GetTypeId ();
+        TypeId GetInstanceTypeId () const;
+        uint32_t GetSerializedSize () const;
+        void Serialize (Buffer::Iterator start) const;
+        uint32_t Deserialize (Buffer::Iterator start);
+        void Print (std::ostream &os) const;
+        //\}
+
+        ///\name Fields
+        //\{
+        void SetShortcut (Ipv4Address sc)
+        {
+          shortcut = sc;
+        }
+
+        Ipv4Address GetShortcut () const
+        {
+          return shortcut;
+        }
+
+        bool operator== (TakeShortcut const & o) const;
+      private:
+        Ipv4Address shortcut;
+    };
+
+    std::ostream & operator<< (std::ostream & os, TakeShortcut const & h);
 
   }
 }
