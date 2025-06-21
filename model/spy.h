@@ -126,6 +126,10 @@ namespace ns3 {
         Ptr<LocationService> m_locationService;
 
         IpL4Protocol::DownTargetCallback m_downTarget;
+
+        int GetAndChangePathId();
+
+        int path_id = 0;
     };
   }
 }

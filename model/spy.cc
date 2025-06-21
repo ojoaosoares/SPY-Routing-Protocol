@@ -268,109 +268,131 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
     bool
     RoutingProtocol::SendPacketFromQueue (Ipv4Address dst)
     {
-      NS_LOG_FUNCTION (this);
-      bool recovery = false;
-      QueueEntry queueEntry;
+        NS_LOG_FUNCTION (this);
+        bool recovery = false;
+        QueueEntry queueEntry;
 
-
-      if (m_locationService->IsInSearch (dst))
+        if (m_locationService->IsInSearch (dst))
         {
-          return false;
+            return false;
         }
 
-      if (!m_locationService->HasPosition (dst)) // Location-service stoped looking for the dst
+        if (!m_locationService->HasPosition (dst)) // Location-service stoped looking for the dst
         {
-          m_queue.DropPacketWithDst (dst);
-          NS_LOG_LOGIC ("Location Service did not find dst. Drop packet to " << dst);
-          return true;
-        }
-
-      Vector myPos;
-      
-      Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
-      myPos.x = MM->GetPosition ().x;
-      myPos.y = MM->GetPosition ().y;
-      Ipv4Address nextHop;
-
-      if(m_neighbors.isNeighbour (dst))
-        {
-          nextHop = dst;
-        }
-      else{
-        Vector dstPos = m_locationService->GetPosition (dst);
-        nextHop = m_neighbors.BestNeighbor (dstPos, myPos);
-        if (nextHop == Ipv4Address::GetZero ())
-          {
-            NS_LOG_LOGIC ("Fallback to recovery-mode. Packets to " << dst);
-            recovery = true;
-          }
-        if(recovery)
-          {
-            
-            Vector Position;
-            Vector previousHop;
-            uint32_t updated;
-            
-            while(m_queue.Dequeue (dst, queueEntry))
-              {
-                Ptr<Packet> p = ConstCast<Packet> (queueEntry.GetPacket ());
-                UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback ();
-                Ipv4Header header = queueEntry.GetIpv4Header ();
-                
-                TypeHeader tHeader (SPY_TYPE_POS);
-                p->RemoveHeader (tHeader);
-                if (!tHeader.IsValid ())
-                  {
-                    NS_LOG_DEBUG ("SPY message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
-                    return false;     // drop
-                  }
-                if (tHeader.Get () == SPY_TYPE_POS)
-                  {
-                    PositionHeader hdr;
-                    p->RemoveHeader (hdr);
-                    Position.x = hdr.GetDstPosx ();
-                    Position.y = hdr.GetDstPosy ();
-                    updated = hdr.GetUpdated (); 
-                  }
-                
-                PositionHeader posHeader (Position.x, Position.y,  updated, myPos.x, myPos.y, (uint8_t) 1, Position.x, Position.y); 
-                p->AddHeader (posHeader); //enters in recovery with last edge from Dst
-                p->AddHeader (tHeader);
-                
-                RecoveryMode(dst, p, ucb, header);
-              }
+            m_queue.DropPacketWithDst (dst);
+            NS_LOG_LOGIC ("Location Service did not find dst. Drop packet to " << dst);
             return true;
-          }
-      }
-      Ptr<Ipv4Route> route = Create<Ipv4Route> ();
-      route->SetDestination (dst);
-      route->SetGateway (nextHop);
+        }
 
-      // FIXME: Does not work for multiple interfaces
-      route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+        Vector myPos;
+        Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
+        myPos.x = MM->GetPosition ().x;
+        myPos.y = MM->GetPosition ().y;
 
-      while (m_queue.Dequeue (dst, queueEntry))
+        Ipv4Address nextHop;
+
+        Vector Position;
+        Vector previousHop;
+
+        uint16_t positionX = 0;
+        uint16_t positionY = 0;
+        uint32_t hdrTime = 0;
+
+        if(dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
         {
-          DeferredRouteOutputTag tag;
+            positionX = m_locationService->GetPosition (dst).x;
+            positionY = m_locationService->GetPosition (dst).y;
+            hdrTime = (uint32_t) m_locationService->GetEntryUpdateTime (dst).GetSeconds ();
+        }
+
+        PositionHeader posGreedyHeader (positionX, positionY,  hdrTime, (uint64_t) 0,(uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y); 
+
+        PositionHeader posRecHeader (positionX, positionY,  hdrTime, myPos.x, myPos.y, (uint8_t) 1, positionX, positionY); 
+
+        while(m_queue.Dequeue (dst, queueEntry))
+        {
           Ptr<Packet> p = ConstCast<Packet> (queueEntry.GetPacket ());
 
           UnicastForwardCallback ucb = queueEntry.GetUnicastForwardCallback ();
           Ipv4Header header = queueEntry.GetIpv4Header ();
+          
+          TypeHeader tHeader (SPY_TYPE_POS);
+          p->RemoveHeader (tHeader);
+
+          if (!tHeader.IsValid ())
+          {
+            NS_LOG_DEBUG ("SPY message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
+            return false;     // drop
+          }
+
+          DisjointHeader disHdr;
+
+          if (tHeader.Get () == SPY_TYPE_POS)
+          {
+              PositionHeader hdr;
+              p->RemoveHeader (hdr);
+              p->RemoveHeader(disHdr);
+          }
+
+          else 
+            return false;
+
+          PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
+
+          if(m_neighbors.isNeighbour (key, dst))
+          {
+              nextHop = dst;
+          }
+
+          else
+          {
+              Vector dstPos = m_locationService->GetPosition (dst);
+              nextHop = m_neighbors.BestNeighbor (key, dstPos, myPos);
+
+              if (nextHop == Ipv4Address::GetZero ())
+              {
+                NS_LOG_LOGIC ("Fallback to recovery-mode. Packets to " << dst);
+                recovery = true;
+              }
+
+              if(recovery)
+              {
+
+                p->AddHeader(disHdr);
+                p->AddHeader(posRecHeader); //enters in recovery with last edge from Dst
+                p->AddHeader(tHeader);
+                
+                RecoveryMode(dst, p, ucb, header);
+
+                continue;
+              }
+          } 
+
+          Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+          route->SetDestination (dst);
+          route->SetGateway (nextHop);
+          route->SetOutputDevice (m_ipv4->GetNetDevice (1));
+
+          p->AddHeader(disHdr);
+          p->AddHeader(posGreedyHeader); //enters in recovery with last edge from Dst
+          p->AddHeader(tHeader);
 
           if (header.GetSource () == Ipv4Address ("102.102.102.102"))
-            {
-              route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
-              header.SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
-            }
+          {
+            route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+            header.SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+          }
+
           else
-            {
-              route->SetSource (header.GetSource ());
-            }
+          {
+            route->SetSource (header.GetSource ());
+          }
+
           ucb (route, p, header);
         }
-      return true;
-    }
 
+        return true;
+    }
 
     void 
     RoutingProtocol::RecoveryMode(Ipv4Address dst, Ptr<Packet> p, UnicastForwardCallback ucb, Ipv4Header header){
@@ -396,6 +418,9 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           NS_LOG_DEBUG ("SPY message " << p->GetUid () << " with unknown type received: " << tHeader.Get () << ". Drop");
           return;     // drop
         }
+
+      DisjointHeader disHdr;
+
       if (tHeader.Get () == SPY_TYPE_POS)
         {
           PositionHeader hdr;
@@ -407,19 +432,23 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           recPos.y = hdr.GetRecPosy ();
           previousHop.x = hdr.GetLastPosx ();
           previousHop.y = hdr.GetLastPosy ();
+          
+          p->RemoveHeader(disHdr);
       }
 
+      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
+
       PositionHeader posHeader (Position.x, Position.y,  updated, recPos.x, recPos.y, (uint8_t) 1, myPos.x, myPos.y); 
+
+      p->AddHeader(disHdr);
       p->AddHeader (posHeader);
       p->AddHeader (tHeader);
 
-
-
-      Ipv4Address nextHop = m_neighbors.BestAngle (previousHop, myPos); 
+      Ipv4Address nextHop = m_neighbors.BestAngle (key, previousHop, myPos); 
       if (nextHop == Ipv4Address::GetZero ())
-        {
-          return;
-        }
+      {
+        return;
+      }
 
       Ptr<Ipv4Route> route = Create<Ipv4Route> ();
       route->SetDestination (dst);
@@ -431,6 +460,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
 
       NS_LOG_LOGIC (route->GetOutputDevice () << " forwarding in Recovery to " << dst << " through " << route->GetGateway () << " packet " << p->GetUid ());
       ucb (route, p, header);
+      
       return;
     }
 
@@ -820,25 +850,33 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
     
       Ipv4Address nextHop;
 
-      if(m_neighbors.isNeighbour (destination))
-        {
+      DisjointHeader disHdr;
+      p->RemoveHeader(disHdr);
+    
+      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), destination, disHdr.GetPathId());
+
+      p->AddHeader(disHdr);
+
+      if(m_neighbors.isNeighbour (key, destination))
+      {
           nextHop = destination;
-        }
+      }
+
       else
-        {
-          nextHop = m_neighbors.BestNeighbor (m_locationService->GetPosition (destination), myPos);
-        }
+      {
+          nextHop = m_neighbors.BestNeighbor (key, m_locationService->GetPosition (destination), myPos);
+      }
 
       uint16_t positionX = 0;
       uint16_t positionY = 0;
       uint32_t hdrTime = 0;
 
       if(destination != m_ipv4->GetAddress (1, 0).GetBroadcast ())
-        {
+      {
           positionX = m_locationService->GetPosition (destination).x;
           positionY = m_locationService->GetPosition (destination).y;
           hdrTime = (uint32_t) m_locationService->GetEntryUpdateTime (destination).GetSeconds ();
-        }
+      }
 
       PositionHeader posHeader (positionX, positionY,  hdrTime, (uint64_t) 0,(uint64_t) 0, (uint8_t) 0, myPos.x, myPos.y); 
       p->AddHeader (posHeader);
@@ -846,7 +884,6 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       p->AddHeader (tHeader);
 
       m_downTarget (p, source, destination, protocol, route);
-
     }
 
     bool
@@ -1024,18 +1061,24 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       myPos.x = MM->GetPosition ().x;
       myPos.y = MM->GetPosition ().y;  
 
-
       Ipv4Address nextHop;
 
-      if(m_neighbors.isNeighbour (dst))
-        {
-          nextHop = dst;
-        }
-      else
-        {
-          nextHop = m_neighbors.BestNeighbor (dstPos, myPos);
-        }
+      uint8_t mypathid = GetAndChangePathId();
 
+      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), header.GetDestination(), mypathid);
+
+      if(m_neighbors.isNeighbour(key, dst))
+      {
+          nextHop = dst;
+      }
+      else
+      {
+          nextHop = m_neighbors.BestNeighbor (key, dstPos, myPos);
+      }
+
+      DisjointHeader disHeader(path_id, 1, m_ipv4->GetAddress(1, 0).GetLocal(), m_ipv4->GetAddress(1, 0).GetLocal());
+
+      p->AddHeader(disHeader);
 
       if (nextHop != Ipv4Address::GetZero ())
         {
@@ -1073,6 +1116,12 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           return LoopbackRoute (header, oif);     //in RouteInput the recovery-mode is called
         }
 
+    }
+
+    int RoutingProtocol::GetAndChangePathId() {
+        int atual = path_id;
+        path_id = 1 - path_id;
+        return atual;
     }
 
 
