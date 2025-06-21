@@ -208,27 +208,27 @@ namespace ns3 {
 
     void PositionHeader::Serialize (Buffer::Iterator i) const
     {
-      i.WriteU64 (m_dstPosx);
-      i.WriteU64 (m_dstPosy);
-      i.WriteU32 (m_updated);
-      i.WriteU64 (m_recPosx);
-      i.WriteU64 (m_recPosy);
+      i.WriteHtonU64 (m_dstPosx);
+      i.WriteHtonU64 (m_dstPosy);
+      i.WriteHtonU32 (m_updated);
+      i.WriteHtonU64 (m_recPosx);
+      i.WriteHtonU64 (m_recPosy);
       i.WriteU8 (m_inRec);
-      i.WriteU64 (m_lastPosx);
-      i.WriteU64 (m_lastPosy);
+      i.WriteHtonU64 (m_lastPosx);
+      i.WriteHtonU64 (m_lastPosy);
     }
 
     uint32_t PositionHeader::Deserialize (Buffer::Iterator start)
     {
       Buffer::Iterator i = start;
-      m_dstPosx = i.ReadU64 ();
-      m_dstPosy = i.ReadU64 ();
-      m_updated = i.ReadU32 ();
-      m_recPosx = i.ReadU64 ();
-      m_recPosy = i.ReadU64 ();
+      m_dstPosx = i.ReadNtohU64 ();
+      m_dstPosy = i.ReadNtohU64 ();
+      m_updated = i.ReadNtohU32 ();
+      m_recPosx = i.ReadNtohU64 ();
+      m_recPosy = i.ReadNtohU64 ();
       m_inRec = i.ReadU8 ();
-      m_lastPosx = i.ReadU64 ();
-      m_lastPosy = i.ReadU64 ();
+      m_lastPosx = i.ReadNtohU64 ();
+      m_lastPosy = i.ReadNtohU64 ();
 
       uint32_t dist = i.GetDistanceFrom (start);
       NS_ASSERT (dist == GetSerializedSize ());
@@ -291,8 +291,8 @@ namespace ns3 {
     {
       i.WriteU8 ((uint8_t) path_id);
       i.WriteU8 ((uint8_t) parity);
-      i.WriteU32 ((uint32_t) last_hop.Get());
-      i.WriteU32 ((uint32_t) last_forwarder.Get());
+      i.WriteHtonU32 ((uint32_t) last_hop.Get());
+      i.WriteHtonU32 ((uint32_t) last_forwarder.Get());
     }
 
     uint32_t DisjointHeader::Deserialize (Buffer::Iterator start)
@@ -301,8 +301,8 @@ namespace ns3 {
 
       path_id = i.ReadU8();
       parity = i.ReadU8();
-      last_hop = Ipv4Address(i.ReadU32());
-      last_forwarder = Ipv4Address(i.ReadU32());
+      last_hop = Ipv4Address(i.ReadNtohU32());
+      last_forwarder = Ipv4Address(i.ReadNtohU32());
 
       uint32_t dist = i.GetDistanceFrom(start);
       NS_ASSERT(dist == GetSerializedSize());
@@ -324,6 +324,88 @@ namespace ns3 {
 
     std::ostream &
     operator<< (std::ostream & os, DisjointHeader const & h)
+    {
+      h.Print (os);
+      return os;
+    }
+
+    //-----------------------------------------------------------------------------
+    // NEIGHINTERSECTION HEADER
+    //-----------------------------------------------------------------------------
+
+    NeighIntersection::NeighIntersection(Ipv4Address s, Ipv4Address d) : source(s), dest(d)
+    {
+    }
+
+    TypeId NeighIntersection::GetTypeId ()
+    {
+      static TypeId tid = TypeId ("ns3::spy::NeighIntersection")
+        .SetParent<Header> ()
+        .AddConstructor<NeighIntersection> ()
+      ;
+      return tid;
+    }
+
+    TypeId NeighIntersection::GetInstanceTypeId () const
+    {
+      return GetTypeId ();
+    }
+
+    uint32_t NeighIntersection::GetSerializedSize () const {
+        return 1 + m_neighbors.size() * 4;
+    }
+
+    void NeighIntersection::Serialize (Buffer::Iterator start) const {
+        start.WriteU8(static_cast<uint8_t>(m_neighbors.size()));
+      
+        for (const auto& addr : m_neighbors) {
+            start.WriteHtonU32(addr.Get());
+        }
+    }
+
+    uint32_t NeighIntersection::Deserialize (Buffer::Iterator start) {
+
+        Buffer::Iterator i = start;
+        uint8_t count = i.ReadU8();
+
+        m_neighbors.clear();
+        for (uint8_t j = 0; j < count; ++j) {
+            uint32_t raw = i.ReadNtohU32();
+            m_neighbors.push_back(ns3::Ipv4Address(raw));
+        }
+        uint32_t dist = i.GetDistanceFrom(start);
+        NS_ASSERT(dist == GetSerializedSize());
+        return dist;
+    }
+
+    void NeighIntersection::AddNeighbor(ns3::Ipv4Address addr) {
+        m_neighbors.push_back(addr);
+    }
+
+    const std::vector<ns3::Ipv4Address>& NeighIntersection::GetNeighbors() const {
+        return m_neighbors;
+    }
+
+    void NeighIntersection::ClearNeighbors() {
+        m_neighbors.clear();
+    }
+
+    void NeighIntersection::Print (std::ostream &os) const
+    {
+      os << " Neighbors: ";
+      for (const auto& addr : m_neighbors)
+      {
+        os << addr << " ";
+      }
+    }
+
+    bool NeighIntersection::operator== (NeighIntersection const & o) const
+    {
+      return m_neighbors == o.m_neighbors;
+    }
+
+    std::ostream &
+    operator<< (std::ostream & os, NeighIntersection const & h)
     {
       h.Print (os);
       return os;
@@ -358,13 +440,13 @@ namespace ns3 {
 
     void TakeShortcut::Serialize (Buffer::Iterator i) const
     {
-      i.WriteU32 ((uint32_t) shortcut.Get());
+      i.WriteHtonU32 ((uint32_t) shortcut.Get());
     }
 
     uint32_t TakeShortcut::Deserialize (Buffer::Iterator start)
     {
       Buffer::Iterator i = start;
-      shortcut = Ipv4Address(i.ReadU32());
+      shortcut = Ipv4Address(i.ReadNtohU32());
     
       uint32_t dist = i.GetDistanceFrom(start);
       NS_ASSERT(dist == GetSerializedSize());

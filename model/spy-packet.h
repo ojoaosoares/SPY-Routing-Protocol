@@ -268,6 +268,58 @@ namespace ns3 {
         Ipv4Address last_forwarder;
     };
 
+    class NeighIntersection : public Header
+    {
+      public:
+        /// c-tor
+        NeighIntersection(Ipv4Address s, Ipv4Address d);
+
+        ///\name Header serialization/deserialization
+        //\{
+        static TypeId GetTypeId ();
+        TypeId GetInstanceTypeId () const;
+        uint32_t GetSerializedSize () const;
+        void Serialize (Buffer::Iterator start) const;
+        uint32_t Deserialize (Buffer::Iterator start);
+        void Print (std::ostream &os) const;
+        //\}
+
+        ///\name Fields
+        //\{
+        void SetSource (Ipv4Address s)
+        {
+          source = s;
+        }
+
+        Ipv4Address GetSource() const
+        {
+          return source;
+        }
+
+        void SetDest (Ipv4Address d)
+        {
+          dest = d;
+        }
+
+        Ipv4Address GetDest() const
+        {
+          return dest;
+        }
+
+        void AddNeighbor(ns3::Ipv4Address addr);
+        const std::vector<ns3::Ipv4Address>& GetNeighbors() const;
+        void ClearNeighbors();
+
+        bool operator== (NeighIntersection const & o) const;
+      private:
+          Ipv4Address dest;
+          Ipv4Address source;
+          std::vector<ns3::Ipv4Address> m_neighbors;
+        
+    };
+
+    std::ostream & operator<< (std::ostream & os, NeighIntersection const & h);
+
     class TakeShortcut : public Header
     {
       public:
