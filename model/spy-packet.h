@@ -30,6 +30,7 @@ namespace ns3 {
       public:
         /// c-tor
         TypeHeader (MessageType t);
+        TypeHeader ();
 
         ///\name Header serialization/deserialization
         //\{

@@ -41,9 +41,9 @@ tar -xjf ns-allinone-3.29.tar.bz2
 cd ns-allinone-3.29/ns-3.29
 ```
 
-### Add the GPDR module
+### Add the SPY module
 
-Clone the GPDR repository inside the src/ directory:
+Clone the SPY repository inside the src/ directory:
 
 ```bash
 cd src

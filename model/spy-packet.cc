@@ -12,7 +12,11 @@ namespace ns3 {
 
     NS_OBJECT_ENSURE_REGISTERED (TypeHeader);
 
-    TypeHeader::TypeHeader (MessageType t = SPY_TYPE_HELLO) : m_type (t), m_valid (true)
+    TypeHeader::TypeHeader (MessageType t) : m_type (t), m_valid (true)
+    {
+    }
+
+    TypeHeader::TypeHeader() : m_type(SPY_TYPE_HELLO), m_valid(true)
     {
     }
 
@@ -260,7 +264,7 @@ namespace ns3 {
     // DISJOINT
     //-----------------------------------------------------------------------------
 
-    DisjointHeader::DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh =  Ipv4Address::GetZero(), Ipv4Address lf =  Ipv4Address::GetZero()) : path_id(p_id), parity(pa), last_hop(lh), last_forwarder(lf) 
+    DisjointHeader::DisjointHeader(uint8_t p_id, uint8_t pa, Ipv4Address lh, Ipv4Address lf) : path_id(p_id), parity(pa), last_hop(lh), last_forwarder(lf) 
     {
     }
 
@@ -327,8 +331,3 @@ namespace ns3 {
 
   }
 }
-
-
-
-
-
