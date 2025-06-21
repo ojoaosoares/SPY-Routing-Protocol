@@ -260,7 +260,7 @@ namespace ns3 {
     // DISJOINT
     //-----------------------------------------------------------------------------
 
-    DisjointHeader::DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh = 0, Ipv4Address lf = 0) : path_id(p_id), parity(pa), last_hop(lh), last_forwarder(lf) 
+    DisjointHeader::DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh =  Ipv4Address::GetZero(), Ipv4Address lf =  Ipv4Address::GetZero()) : path_id(p_id), parity(pa), last_hop(lh), last_forwarder(lf) 
     {
     }
 

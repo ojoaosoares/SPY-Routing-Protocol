@@ -204,7 +204,7 @@ namespace ns3 {
     {
       public:
         /// c-tor
-        DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh = 0, Ipv4Address lf = 0);
+        DisjointHeader(uint8_t p_id = 0, uint8_t pa = 0, Ipv4Address lh = Ipv4Address::GetZero(), Ipv4Address lf = Ipv4Address::GetZero());
 
         ///\name Header serialization/deserialization
         //\{
