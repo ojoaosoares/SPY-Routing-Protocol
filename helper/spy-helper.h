@@ -17,8 +17,8 @@
  *
  * Authors: Pavel Boyko <boyko@iitp.ru>, written after OlsrHelper by Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
-#ifndef GPSRHELPER_H_
-#define GPSRHELPER_H_
+#ifndef SPYHELPER_H_
+#define SPYHELPER_H_
 
 #include "ns3/object-factory.h"
 #include "ns3/node.h"
@@ -27,8 +27,8 @@
 
 namespace ns3 {
 /**
- * \ingroup gpsr
- * \brief Helper class that adds GPSR routing to nodes.
+ * \ingroup spy
+ * \brief Helper class that adds SPY routing to nodes.
  */
 class GpsrHelper : public Ipv4RoutingHelper
 {
@@ -50,14 +50,14 @@ public:
    *
    * This method will be called by ns3::InternetStackHelper::Install
    *
-   * TODO: support installing GPSR on the subset of all available IP interfaces
+   * TODO: support installing SPY on the subset of all available IP interfaces
    */
   virtual Ptr<Ipv4RoutingProtocol> Create (Ptr<Node> node) const;
   /**
    * \param name the name of the attribute to set
    * \param value the value of the attribute to set.
    *
-   * This method controls the attributes of ns3::gpsr::RoutingProtocol
+   * This method controls the attributes of ns3::spy::RoutingProtocol
    */
   void Set (std::string name, const AttributeValue &value);
 
@@ -68,4 +68,4 @@ private:
 };
 
 }
-#endif /* GPSRHELPER_H_ */
+#endif /* SPYHELPER_H_ */

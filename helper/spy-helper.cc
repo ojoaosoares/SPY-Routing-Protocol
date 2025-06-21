@@ -17,8 +17,8 @@
  *
  * Authors: António Fonseca <afonseca@tagus.inesc-id.pt>, written after OlsrHelper by Mathieu Lacage <mathieu.lacage@sophia.inria.fr>
  */
-#include "gpsr-helper.h"
-#include "ns3/gpsr.h"
+#include "spy-helper.h"
+#include "ns3/spy.h"
 #include "ns3/node-list.h"
 #include "ns3/names.h"
 #include "ns3/ipv4-list-routing.h"
@@ -31,7 +31,7 @@ namespace ns3 {
 GpsrHelper::GpsrHelper ()
   : Ipv4RoutingHelper ()
 {
-  m_agentFactory.SetTypeId ("ns3::gpsr::RoutingProtocol");
+  m_agentFactory.SetTypeId ("ns3::spy::RoutingProtocol");
 }
 
 GpsrHelper*
@@ -44,11 +44,11 @@ Ptr<Ipv4RoutingProtocol>
 GpsrHelper::Create (Ptr<Node> node) const
 {
   //Ptr<Ipv4L4Protocol> ipv4l4 = node->GetObject<Ipv4L4Protocol> ();
-  Ptr<gpsr::RoutingProtocol> gpsr = m_agentFactory.Create<gpsr::RoutingProtocol> ();
-  //gpsr->SetDownTarget (ipv4l4->GetDownTarget ());
-  //ipv4l4->SetDownTarget (MakeCallback (&gpsr::RoutingProtocol::AddHeaders, gpsr));
-  node->AggregateObject (gpsr);
-  return gpsr;
+  Ptr<spy::RoutingProtocol> spy = m_agentFactory.Create<spy::RoutingProtocol> ();
+  //spy->SetDownTarget (ipv4l4->GetDownTarget ());
+  //ipv4l4->SetDownTarget (MakeCallback (&spy::RoutingProtocol::AddHeaders, spy));
+  node->AggregateObject (spy);
+  return spy;
 }
 
 void
@@ -66,9 +66,9 @@ GpsrHelper::Install (void) const
     {
       Ptr<Node> node = (*i);
       Ptr<UdpL4Protocol> udp = node->GetObject<UdpL4Protocol> ();
-      Ptr<gpsr::RoutingProtocol> gpsr = node->GetObject<gpsr::RoutingProtocol> ();
-      gpsr->SetDownTarget (udp->GetDownTarget ());
-      udp->SetDownTarget (MakeCallback(&gpsr::RoutingProtocol::AddHeaders, gpsr));
+      Ptr<spy::RoutingProtocol> spy = node->GetObject<spy::RoutingProtocol> ();
+      spy->SetDownTarget (udp->GetDownTarget ());
+      udp->SetDownTarget (MakeCallback(&spy::RoutingProtocol::AddHeaders, spy));
     }
 
 
