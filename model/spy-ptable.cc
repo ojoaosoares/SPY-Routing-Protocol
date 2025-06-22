@@ -375,5 +375,22 @@ namespace ns3 {
 
       return Ipv4Address::GetZero();
     }
+
+    std::vector<ns3::Ipv4Address>
+    PositionTable::GetIntersection(const std::vector<ns3::Ipv4Address>& other) const
+    {
+      std::vector<ns3::Ipv4Address> result;
+
+      for (const auto& addr : other)
+      {
+        if (m_table.find(addr) != m_table.end())
+        {
+          result.push_back(addr);
+        }
+      }
+
+      return result;
+    }
+
   }   // spy
 } // ns3

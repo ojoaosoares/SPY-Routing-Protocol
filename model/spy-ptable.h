@@ -18,7 +18,7 @@
 namespace ns3 {
   namespace spy {
 
-    typedef std::tuple<Ipv4Address, Ipv4Address, uint32_t> PacketKey;
+    typedef std::tuple<Ipv4Address, Ipv4Address, uint8_t> PacketKey;
 
     /*
     * \ingroup spy
@@ -117,6 +117,15 @@ namespace ns3 {
         bool HasNotForward(const PacketKey& pktKey);
 
         Ipv4Address getLastSender(const PacketKey& pktKey);
+
+        std::map<Ipv4Address, std::pair<Vector, Time>>& GetNeighborTable ()
+        {
+          Purge();
+          return m_table;
+        }
+
+        std::vector<ns3::Ipv4Address> GetIntersection(const std::vector<ns3::Ipv4Address>& other) const;
+
 
       private:
         Time m_entryLifeTime;
