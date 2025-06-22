@@ -20,7 +20,8 @@ namespace ns3 {
       SPY_TYPE_POS = 2,                           //!< SPY_TYPE_POS
       SPY_TYPE_NEIGH_INTERSECTION = 3,            //!< SPY_TYPE_DISJOINT
       SPY_TYPE_TAKE_SHORTCUT = 4,                 //!< SPY_TYPE_TAKE_SHORTCUT
-      SPY_TYPE_SET_PATH = 5                       //!< SPY_TYPE_SET_PATH
+      SPY_TYPE_IN_ANALYSIS = 5,                   //!< SPY_TYPE_IN_ANALYSIS
+      SPY_TYPE_SET_PATH = 6                       //!< SPY_TYPE_SET_PATH
     };
 
     /**
@@ -48,6 +49,11 @@ namespace ns3 {
         MessageType Get () const
         {
           return m_type;
+        }
+
+        void Set (MessageType t)
+        {
+          m_type = t;
         }
         /// Check that type if valid
         bool IsValid () const
@@ -279,7 +285,7 @@ namespace ns3 {
     {
       public:
         /// c-tor
-        PathId (uint8_t id);
+        PathId (Ipv4Address s = Ipv4Address::GetZero(), Ipv4Address d = Ipv4Address::GetZero(), uint8_t id = 0);
 
         ///\name Header serialization/deserialization
         //\{
@@ -292,6 +298,24 @@ namespace ns3 {
         //\}
 
         /// Return type
+        Ipv4Address GetSource () const
+        {
+          return source;
+        }
+        /// Check that type if valid
+        void SetSource(Ipv4Address ip)
+        {
+          source = ip;
+        }
+        Ipv4Address GetDest () const
+        {
+          return dest;
+        }
+        /// Check that type if valid
+        void SetDest(Ipv4Address ip)
+        {
+          dest = ip;
+        }
         uint8_t GetId () const
         {
           return m_id;
@@ -304,6 +328,8 @@ namespace ns3 {
 
         bool operator== (PathId const & o) const;
       private:
+        Ipv4Address source;
+        Ipv4Address dest;
         uint8_t m_id;
         
     };
@@ -314,7 +340,7 @@ namespace ns3 {
     {
       public:
         /// c-tor
-        NeighIntersection(Ipv4Address s, Ipv4Address d);
+        NeighIntersection(Ipv4Address s = Ipv4Address::GetZero(), Ipv4Address d = Ipv4Address::GetZero());
 
         ///\name Header serialization/deserialization
         //\{
@@ -348,14 +374,20 @@ namespace ns3 {
           return dest;
         }
 
-        void AddNeighbor(ns3::Ipv4Address addr);
-        const std::vector<ns3::Ipv4Address>& GetNeighbors() const;
+        void SetNeighbors(const std::vector<ns3::Ipv4Address>& neighbors)
+        {
+          m_neighbors = neighbors;
+        }
+
+        void AddNeighbor(Ipv4Address addr);
+        const std::vector<Ipv4Address>& GetNeighbors() const;
+        Ipv4Address PopLastNeighbor();
         void ClearNeighbors();
 
         bool operator== (NeighIntersection const & o) const;
       private:
-          Ipv4Address dest;
           Ipv4Address source;
+          Ipv4Address dest;
           std::vector<ns3::Ipv4Address> m_neighbors;
         
     };

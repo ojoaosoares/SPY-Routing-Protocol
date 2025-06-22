@@ -53,6 +53,10 @@ namespace ns3 {
       {
         case SPY_TYPE_HELLO:
         case SPY_TYPE_POS:
+        case SPY_TYPE_IN_ANALYSIS:
+        case SPY_TYPE_NEIGH_INTERSECTION:
+        case SPY_TYPE_SET_PATH:
+        case SPY_TYPE_TAKE_SHORTCUT:
           {
             m_type = (MessageType) type;
             break;
@@ -338,7 +342,7 @@ namespace ns3 {
 
     NS_OBJECT_ENSURE_REGISTERED (PathId);
 
-    PathId::PathId (uint8_t id) : m_id(id)
+    PathId::PathId (Ipv4Address s, Ipv4Address d, uint8_t id) : source(s), dest(d), m_id(id)
     {
     }
 
@@ -358,18 +362,22 @@ namespace ns3 {
 
     uint32_t PathId::GetSerializedSize () const
     {
-      return 1;
+      return 9;
     }
 
     void PathId::Serialize (Buffer::Iterator i) const
     {
+      i.WriteHtonU32(source.Get());
+      i.WriteHtonU32(dest.Get());
       i.WriteU8 ((uint8_t) m_id);
     }
 
     uint32_t PathId::Deserialize (Buffer::Iterator start)
     {
       Buffer::Iterator i = start;
-      uint8_t type = i.ReadU8 ();
+      source = Ipv4Address(i.ReadNtohU32());
+      dest = Ipv4Address(i.ReadNtohU32());
+      m_id = i.ReadU8 ();
 
       uint32_t dist = i.GetDistanceFrom (start);
       NS_ASSERT (dist == GetSerializedSize ());
@@ -437,19 +445,31 @@ namespace ns3 {
         m_neighbors.clear();
         for (uint8_t j = 0; j < count; ++j) {
             uint32_t raw = i.ReadNtohU32();
-            m_neighbors.push_back(ns3::Ipv4Address(raw));
+            m_neighbors.push_back(Ipv4Address(raw));
         }
         uint32_t dist = i.GetDistanceFrom(start);
         NS_ASSERT(dist == GetSerializedSize());
         return dist;
     }
 
-    void NeighIntersection::AddNeighbor(ns3::Ipv4Address addr) {
+    void NeighIntersection::AddNeighbor(Ipv4Address addr) {
         m_neighbors.push_back(addr);
     }
 
-    const std::vector<ns3::Ipv4Address>& NeighIntersection::GetNeighbors() const {
+    const std::vector<Ipv4Address>& NeighIntersection::GetNeighbors() const {
         return m_neighbors;
+    }
+
+    Ipv4Address NeighIntersection::PopLastNeighbor()
+    {
+      if (m_neighbors.empty())
+      {
+        return Ipv4Address::GetZero();
+      }
+
+      Ipv4Address last = m_neighbors.back();
+      m_neighbors.pop_back();
+      return last;
     }
 
     void NeighIntersection::ClearNeighbors() {
