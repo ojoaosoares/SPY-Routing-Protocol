@@ -19,7 +19,8 @@ namespace ns3 {
       SPY_TYPE_HELLO  = 1,                        //!< SPY_TYPE_HELLO
       SPY_TYPE_POS = 2,                           //!< SPY_TYPE_POS
       SPY_TYPE_NEIGH_INTERSECTION = 3,            //!< SPY_TYPE_DISJOINT
-      SPY_TYPE_TAKE_SHORTCUT = 4                  //!< SPY_TYPE_TAKE_SHORTCUT
+      SPY_TYPE_TAKE_SHORTCUT = 4,                 //!< SPY_TYPE_TAKE_SHORTCUT
+      SPY_TYPE_SET_PATH = 5                       //!< SPY_TYPE_SET_PATH
     };
 
     /**
@@ -267,6 +268,47 @@ namespace ns3 {
         Ipv4Address last_hop;
         Ipv4Address last_forwarder;
     };
+
+    std::ostream & operator<< (std::ostream & os, DisjointHeader const & h);
+
+    /**
+     * \ingroup spy
+     * \brief spy path id
+     */
+    class PathId : public Header
+    {
+      public:
+        /// c-tor
+        PathId (uint8_t id);
+
+        ///\name Header serialization/deserialization
+        //\{
+        static TypeId GetTypeId ();
+        TypeId GetInstanceTypeId () const;
+        uint32_t GetSerializedSize () const;
+        void Serialize (Buffer::Iterator start) const;
+        uint32_t Deserialize (Buffer::Iterator start);
+        void Print (std::ostream &os) const;
+        //\}
+
+        /// Return type
+        uint8_t GetId () const
+        {
+          return m_id;
+        }
+        /// Check that type if valid
+        void SetId(uint8_t id)
+        {
+          m_id = id;
+        }
+
+        bool operator== (PathId const & o) const;
+      private:
+        uint8_t m_id;
+        
+    };
+
+    std::ostream & operator<< (std::ostream & os, PathId const & h);
 
     class NeighIntersection : public Header
     {

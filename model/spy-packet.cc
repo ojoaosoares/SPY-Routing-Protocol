@@ -268,6 +268,8 @@ namespace ns3 {
     {
     }
 
+    NS_OBJECT_ENSURE_REGISTERED (DisjointHeader);
+
     TypeId DisjointHeader::GetTypeId ()
     {
       static TypeId tid = TypeId ("ns3::spy::DisjointHeader")
@@ -330,12 +332,76 @@ namespace ns3 {
     }
 
     //-----------------------------------------------------------------------------
+    // PATHID HEADER
+    //-----------------------------------------------------------------------------
+
+
+    NS_OBJECT_ENSURE_REGISTERED (PathId);
+
+    PathId::PathId (uint8_t id) : m_id(id)
+    {
+    }
+
+    TypeId PathId::GetTypeId ()
+    {
+      static TypeId tid = TypeId ("ns3::spy::PathId")
+        .SetParent<Header> ()
+        .AddConstructor<PathId> ()
+      ;
+      return tid;
+    }
+
+    TypeId PathId::GetInstanceTypeId () const
+    {
+      return GetTypeId ();
+    }
+
+    uint32_t PathId::GetSerializedSize () const
+    {
+      return 1;
+    }
+
+    void PathId::Serialize (Buffer::Iterator i) const
+    {
+      i.WriteU8 ((uint8_t) m_id);
+    }
+
+    uint32_t PathId::Deserialize (Buffer::Iterator start)
+    {
+      Buffer::Iterator i = start;
+      uint8_t type = i.ReadU8 ();
+
+      uint32_t dist = i.GetDistanceFrom (start);
+      NS_ASSERT (dist == GetSerializedSize ());
+      return dist;
+    }
+
+    void PathId::Print (std::ostream &os) const
+    {
+      os << "PATH ID " << m_id; 
+    }
+
+    bool PathId::operator== (PathId const & o) const
+    {
+      return (m_id == o.m_id);
+    }
+
+    std::ostream &
+    operator<< (std::ostream & os, PathId const & h)
+    {
+      h.Print (os);
+      return os;
+    }
+
+    //-----------------------------------------------------------------------------
     // NEIGHINTERSECTION HEADER
     //-----------------------------------------------------------------------------
 
     NeighIntersection::NeighIntersection(Ipv4Address s, Ipv4Address d) : source(s), dest(d)
     {
     }
+
+    NS_OBJECT_ENSURE_REGISTERED (NeighIntersection);
 
     TypeId NeighIntersection::GetTypeId ()
     {
@@ -418,6 +484,8 @@ namespace ns3 {
     TakeShortcut::TakeShortcut(Ipv4Address sc) : shortcut(sc)
     {
     }
+
+    NS_OBJECT_ENSURE_REGISTERED (TakeShortcut);
 
     TypeId TakeShortcut::GetTypeId ()
     {
