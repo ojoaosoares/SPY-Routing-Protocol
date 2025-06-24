@@ -194,12 +194,13 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
               packet->RemoveHeader(disHdr);
           }
 
-          PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
-
           Ipv4Address lastHop = disHdr.GetLastHop();
 
-          PacketKey inverse = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId() != 1);
+          PacketKey inverse = std::make_tuple(origin, dst, disHdr.GetPathId() == 0 ? 1 : 0);
           m_neighbors.AddNotForward(inverse, lastHop);
+
+          AddParityPath(origin, disHdr.GetPathId(), disHdr.GetParity());
+          CheckParityPathsTimer.Schedule (Seconds (1));
       
           if (dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
             {
@@ -447,7 +448,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           p->RemoveHeader(disHdr);
       }
 
-      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
+      PacketKey key = std::make_tuple(header.GetSource(), dst, disHdr.GetPathId());
 
       PositionHeader posHeader (Position.x, Position.y,  updated, recPos.x, recPos.y, (uint8_t) 1, myPos.x, myPos.y); 
 
@@ -867,7 +868,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       DisjointHeader disHdr;
       p->RemoveHeader(disHdr);
     
-      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), destination, disHdr.GetPathId());
+      PacketKey key = std::make_tuple(source, destination, disHdr.GetPathId());
 
       p->AddHeader(disHdr);
 
@@ -940,12 +941,12 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           p->RemoveHeader(disHdr);
       }
 
-      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId());
+      PacketKey key = std::make_tuple(origin, dst, disHdr.GetPathId());
 
       if (disHdr.GetLastHop() == disHdr.GetLastForwarder() && m_neighbors.HasNotForward(key))
       {
           disHdr.SetLastForwarder(m_ipv4->GetAddress(1, 0).GetLocal());
-          disHdr.SetParity(disHdr.GetParity() != 1);
+          disHdr.SetParity(disHdr.GetParity() == 0 ? 1 : 0);
 
           p->AddHeader(disHdr);
           p->AddHeader (hdr);
@@ -977,13 +978,13 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
 
       else if (m_ipv4->GetAddress(1, 0).GetLocal() != header.GetSource())
       {
-        PacketKey inverse = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), dst, disHdr.GetPathId() != 1);
+        PacketKey inverse = std::make_tuple(origin, dst, disHdr.GetPathId() == 0 ? 1 : 0);
         m_neighbors.AddNotForward(inverse, lastHop);
       }
 
       disHdr.SetLastHop(m_ipv4->GetAddress(1, 0).GetLocal());
       disHdr.SetLastForwarder(m_ipv4->GetAddress(1, 0).GetLocal());
-      disHdr.SetParity(disHdr.GetParity() != 1);      
+      disHdr.SetParity(disHdr.GetParity() == 0 ? 1 : 0);      
 
       Vector myPos;
       Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
@@ -1117,7 +1118,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
 
       uint8_t mypathid = GetAndChangePathId();
 
-      PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), header.GetDestination(), mypathid);
+      PacketKey key = std::make_tuple(header.GetSource(), header.GetDestination(), mypathid);
 
       if(m_neighbors.isNeighbour(key, dst))
       {

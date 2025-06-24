@@ -232,6 +232,8 @@ namespace ns3 {
     {
       Purge ();
 
+      PacketKey inverseKey = std::make_tuple(std::get<0>(pktKey), std::get<1>(pktKey), std::get<2>(pktKey) != 1);
+      
       if (m_table.empty ())
         {
           NS_LOG_DEBUG ("BestNeighbor table is empty; Position: " << nodePos);
@@ -245,6 +247,11 @@ namespace ns3 {
 
       for (i = m_table.begin (); !(i == m_table.end ()); i++)
       {
+          if (HasNotSend(inverseKey, i->first))
+          {
+            return i->first;
+          }
+
           tmpAngle = GetAngle(nodePos, previousHop, i->second.first);
           if (bestFoundAngle > tmpAngle && tmpAngle != 0 && !HasNotSend(pktKey, i->first))
           {
