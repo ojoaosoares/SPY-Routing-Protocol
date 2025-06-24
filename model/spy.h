@@ -87,6 +87,10 @@ namespace ns3 {
           return;
         }
 
+        // Parity map functions
+
+        void AddParityPath(Ipv4Address source, uint8_t pathid, uint8_t parity);
+
       private:
         /// Start protocol operation
         void Start ();
@@ -130,6 +134,11 @@ namespace ns3 {
         int GetAndChangePathId();
 
         int path_id = 0;
+
+        // parity map
+        Timer CheckParityPathsTimer;
+        void CheckParityPaths ();
+        std::map<Ipv4Address, std::tuple<uint8_t, uint8_t, Time>> parity_paths;
     };
   }
 }

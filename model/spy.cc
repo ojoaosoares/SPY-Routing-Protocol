@@ -18,6 +18,7 @@
 #include "ns3/double.h"
 #include <algorithm>
 #include <limits>
+#include "ns3/random-variable-stream.h"
 
 #define SPY_LS_GOD 0
 
@@ -711,6 +712,9 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       //Schedule only when it has packets on queue
       CheckQueueTimer.SetFunction (&RoutingProtocol::CheckQueue, this);
 
+      // Parity paths
+      CheckParityPathsTimer.SetFunction (&RoutingProtocol::CheckParityPaths, this);
+
       Simulator::ScheduleNow (&RoutingProtocol::Start, this);
     }
 
@@ -1172,6 +1176,129 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
         return atual;
     }
 
+
+    void RoutingProtocol::AddParityPath(Ipv4Address source, uint8_t pathid, uint8_t parity)
+    {
+        std::map<Ipv4Address, std::tuple<uint8_t, uint8_t, Time>>::iterator it = parity_paths.find(source);
+
+        if (it != parity_paths.end())
+        {
+            if (path_id == 0)
+            {
+              std::get<0>(it->second) = parity + 1;
+            }
+
+            if (path_id == 1)
+            {
+              std::get<1>(it->second) = parity + 1;
+            }
+
+            std::get<2>(it->second) = Simulator::Now ();
+        }
+
+        else
+        {
+            uint8_t first = 0;
+            uint8_t second = 0;
+
+            if (path_id == 0)
+            {
+                first = parity + 1;
+            }
+
+            if (path_id == 1)
+            {
+                second = parity + 1;
+            }
+
+            parity_paths[source] = std::make_tuple(first, second, Simulator::Now ());
+        }
+    }
+
+
+    void
+    RoutingProtocol::CheckParityPaths ()
+    {
+      Time expirationTime = Seconds (4.0);
+      std::vector<Ipv4Address> toRemove;
+
+      Time now = Simulator::Now ();
+
+      for (auto it = parity_paths.begin (); it != parity_paths.end (); ++it)
+      {
+        Time lastUpdate = std::get<2>(it->second);
+
+        if (lastUpdate + expirationTime <= now)
+        {
+          toRemove.push_back(it->first);
+        }
+        
+        else if (std::get<0>(it->second) != 0 && std::get<1>(it->second) != 0
+         && std::get<0>(it->second) != std::get<1>(it->second))
+        {
+            Ptr<UniformRandomVariable> uv = CreateObject<UniformRandomVariable> ();
+            uint8_t randomBit = uv->GetValue(0, 2);
+          
+            PacketKey key = std::make_tuple(it->first, m_ipv4->GetAddress(1, 0).GetLocal(), randomBit);
+            Ipv4Address lastHop = m_neighbors.getLastSender(key);
+
+            // If the address is invalid, try with the other bit
+            if (lastHop == Ipv4Address::GetZero())
+            {
+                uint8_t otherBit = 1 - randomBit;
+                key = std::make_tuple(it->first, m_ipv4->GetAddress(1, 0).GetLocal(), otherBit);
+                lastHop = m_neighbors.getLastSender(key);
+
+                if (lastHop == Ipv4Address::GetZero())
+                  continue;
+
+                randomBit = otherBit;
+            }
+
+            TakeShortcut tsHdr(m_ipv4->GetAddress(1, 0).GetLocal());
+            NeighIntersection neighHdr(lastHop, m_ipv4->GetAddress(1, 0).GetLocal());
+
+            PathId piHdr(it->first, m_ipv4->GetAddress(1, 0).GetLocal(), randomBit);
+
+            TypeHeader tHdr(SPY_TYPE_NEIGH_INTERSECTION);
+
+            std::map<Ipv4Address, std::pair<Vector, Time>> table = m_neighbors.GetNeighborTable();
+
+            for (const auto& entry : table)
+            {
+              neighHdr.AddNeighbor(entry.first);
+            }
+
+            for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+            {
+              Ptr<Socket> socket = j->first;
+              Ipv4InterfaceAddress iface = j->second;
+
+              Ptr<Packet> packet = Create<Packet>();
+
+              packet->AddHeader(tsHdr);
+              packet->AddHeader(neighHdr);
+              packet->AddHeader(piHdr);
+              packet->AddHeader(tHdr);
+              
+              Ipv4Address destination = lastHop;
+              
+              socket->SendTo (packet, 0, InetSocketAddress (destination, SPY_PORT));
+
+            }
+        }
+      }
+
+      for (const auto& ip : toRemove)
+      {
+        parity_paths.erase(ip);
+      }
+
+      if (!parity_paths.empty())
+      {
+        CheckParityPathsTimer.Schedule (Seconds (2));
+      }
+    }
 
   }
 }
