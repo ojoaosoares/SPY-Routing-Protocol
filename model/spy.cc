@@ -532,22 +532,267 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       TypeHeader tHeader (SPY_TYPE_HELLO);
       packet->RemoveHeader (tHeader);
       if (!tHeader.IsValid ())
-        {
+      {
           NS_LOG_DEBUG ("SPY message " << packet->GetUid () << " with unknown type received: " << tHeader.Get () << ". Ignored");
           return;
+      }
+
+      if (tHeader.Get() == SPY_TYPE_TAKE_SHORTCUT)
+      {
+          PathId piHdr;
+          TakeShortcut tsHdr;
+
+          packet->RemoveHeader(piHdr);
+          packet->RemoveHeader(tsHdr);
+
+          PacketKey inversekey = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId() == 0 ? 1 : 0);
+
+          if (m_neighbors.isNeighbour(inversekey, tsHdr.GetShortcut()))
+          {
+              PacketKey key = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId());
+
+              m_neighbors.AddNotSend(key, tsHdr.GetShortcut());
+
+              return;
+          }
+
+          tHeader.Set(SPY_TYPE_NEIGH_INTERSECTION);
+
+          packet->AddHeader(piHdr);
+          
+      }
+
+      if (tHeader.Get() == SPY_TYPE_HELLO)
+      {
+
+        HelloHeader hdr;
+        packet->RemoveHeader (hdr);
+        Vector Position;
+        Position.x = hdr.GetOriginPosx ();
+        Position.y = hdr.GetOriginPosy ();
+        InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
+        Ipv4Address sender = inetSourceAddr.GetIpv4 ();
+        Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
+
+        UpdateRouteToNeighbor (sender, receiver, Position);
+      }
+
+      else if (tHeader.Get() == SPY_TYPE_IN_ANALYSIS)
+      {
+        PathId piHdr;
+        NeighIntersection niHdr;
+        TakeShortcut tsHdr;
+
+        packet->RemoveHeader(piHdr);
+        packet->RemoveHeader(niHdr);
+        packet->RemoveHeader(tsHdr);
+
+        if (m_ipv4->GetAddress(1, 0).GetLocal() != niHdr.GetSource())
+        {
+          PacketKey inversekey = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId() == 0 ? 1 : 0);
+
+          if (!m_neighbors.HasNotForward(inversekey) && m_neighbors.isNeighbour(inversekey, niHdr.GetDest()))
+          {
+              PacketKey key = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId());
+
+              m_neighbors.AddNotForward(key, niHdr.GetSource());
+
+              m_neighbors.AddNotSend(key, niHdr.GetDest());
+
+              TakeShortcut newTsHdr(m_ipv4->GetAddress(1, 0).GetLocal());
+              TypeHeader newThdr(SPY_TYPE_SET_PATH);
+
+              for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+              {
+                Ptr<Socket> socket = j->first;
+
+                Ptr<Packet> newpacket = Create<Packet>();
+
+                newpacket->AddHeader(newTsHdr);
+                newpacket->AddHeader(piHdr);
+                newpacket->AddHeader(newThdr);
+                
+                Ipv4Address destination = niHdr.GetSource();
+                
+                socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+              }
+          }
+
+          else
+          {
+              for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+              {
+                Ptr<Socket> socket = j->first;
+
+                Ptr<Packet> newpacket = Create<Packet>();
+
+                newpacket->AddHeader(tsHdr);
+                newpacket->AddHeader(niHdr);
+                newpacket->AddHeader(piHdr);
+                newpacket->AddHeader(tHeader);
+                
+                Ipv4Address destination = niHdr.GetSource();
+                
+                socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+              }
+          }
+        }
+      
+        else
+        {
+            std::vector<Ipv4Address> inter = niHdr.GetNeighbors();
+
+            if (!inter.empty())
+            { 
+                Ipv4Address nextHop = niHdr.PopLastNeighbor();
+
+                for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+                {
+                  Ptr<Socket> socket = j->first;
+
+                  Ptr<Packet> newpacket = Create<Packet>();
+
+                  newpacket->AddHeader(tsHdr);
+                  newpacket->AddHeader(niHdr);
+                  newpacket->AddHeader(piHdr);
+                  newpacket->AddHeader(tHeader);
+                  
+                  Ipv4Address destination = nextHop;
+                  
+                  socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+                }
+            }
+
+            else
+            {
+                PacketKey key = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId());
+                Ipv4Address lastHop = m_neighbors.getLastSender(key);
+
+                if (lastHop != Ipv4Address::GetZero())
+                {
+                    TakeShortcut newtsHdr(m_ipv4->GetAddress(1, 0).GetLocal());
+                    NeighIntersection newneighHdr(lastHop, m_ipv4->GetAddress(1, 0).GetLocal());
+
+                    TypeHeader newtHdr(SPY_TYPE_TAKE_SHORTCUT);
+
+                    std::map<Ipv4Address, std::pair<Vector, Time>> table = m_neighbors.GetNeighborTable();
+
+                    for (const auto& entry : table)
+                    {
+                      newneighHdr.AddNeighbor(entry.first);
+                    } 
+
+                    for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+                    {
+                      Ptr<Socket> socket = j->first;
+
+                      Ptr<Packet> newpacket = Create<Packet>();
+
+                      newpacket->AddHeader(newtsHdr);
+                      newpacket->AddHeader(newneighHdr);
+                      newpacket->AddHeader(tsHdr);
+                      newpacket->AddHeader(piHdr);
+                      newpacket->AddHeader(newtHdr);
+                      
+                      Ipv4Address destination = lastHop;
+                      
+                      socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+                    }
+                }
+
+            }
+        }
+      }
+
+      else if (tHeader.Get() == SPY_TYPE_NEIGH_INTERSECTION)
+      {
+        PathId piHdr;
+        NeighIntersection niHdr;
+        TakeShortcut tsHdr;
+
+        packet->RemoveHeader(piHdr);
+        packet->RemoveHeader(niHdr);
+        packet->RemoveHeader(tsHdr);
+
+        std::vector<Ipv4Address> inter = m_neighbors.GetIntersection(niHdr.GetNeighbors());
+
+        if (!inter.empty())
+        {
+            NeighIntersection intersectionHdr(niHdr.GetSource(), niHdr.GetDest());
+            intersectionHdr.SetNeighbors(inter);
+
+            Ipv4Address nextHop = intersectionHdr.PopLastNeighbor();
+
+            TypeHeader tHdr(SPY_TYPE_IN_ANALYSIS);
+
+            for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+            {
+              Ptr<Socket> socket = j->first;
+
+              Ptr<Packet> newpacket = Create<Packet>();
+
+              newpacket->AddHeader(tsHdr);
+              newpacket->AddHeader(intersectionHdr);
+              newpacket->AddHeader(piHdr);
+              newpacket->AddHeader(tHdr);
+              
+              Ipv4Address destination = nextHop;
+              
+              socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+            }
         }
 
-      HelloHeader hdr;
-      packet->RemoveHeader (hdr);
-      Vector Position;
-      Position.x = hdr.GetOriginPosx ();
-      Position.y = hdr.GetOriginPosy ();
-      InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
-      Ipv4Address sender = inetSourceAddr.GetIpv4 ();
-      Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
+        else
+        {
+            PacketKey key = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId());
+            Ipv4Address lastHop = m_neighbors.getLastSender(key);
 
-      UpdateRouteToNeighbor (sender, receiver, Position);
+            if (lastHop != Ipv4Address::GetZero())
+            {
+                TakeShortcut newtsHdr(m_ipv4->GetAddress(1, 0).GetLocal());
+                NeighIntersection newneighHdr(lastHop, m_ipv4->GetAddress(1, 0).GetLocal());
 
+                TypeHeader newtHdr(SPY_TYPE_TAKE_SHORTCUT);
+
+                std::map<Ipv4Address, std::pair<Vector, Time>> table = m_neighbors.GetNeighborTable();
+
+                for (const auto& entry : table)
+                {
+                  newneighHdr.AddNeighbor(entry.first);
+                } 
+
+                for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
+                {
+                  Ptr<Socket> socket = j->first;
+
+                  Ptr<Packet> newpacket = Create<Packet>();
+
+                  newpacket->AddHeader(newtsHdr);
+                  newpacket->AddHeader(newneighHdr);
+                  newpacket->AddHeader(tsHdr);
+                  newpacket->AddHeader(piHdr);
+                  newpacket->AddHeader(newtHdr);
+                  
+                  Ipv4Address destination = lastHop;
+                  
+                  socket->SendTo (newpacket, 0, InetSocketAddress (destination, SPY_PORT));
+                }
+            }
+
+        }
+      }
+
+      else if (tHeader.Get() == SPY_TYPE_SET_PATH)
+      {
+          PathId piHdr;
+          TakeShortcut tsHdr;
+          packet->RemoveHeader(piHdr);          
+          packet->RemoveHeader(tsHdr);
+
+          PacketKey key = std::make_tuple(piHdr.GetSource(), piHdr.GetDest(), piHdr.GetId());
+
+          m_neighbors.AddNotSend(key, tsHdr.GetShortcut());
+      }
     }
 
 
@@ -1273,7 +1518,6 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
             for (std::map<Ptr<Socket>, Ipv4InterfaceAddress>::const_iterator j = m_socketAddresses.begin (); j != m_socketAddresses.end (); ++j)
             {
               Ptr<Socket> socket = j->first;
-              Ipv4InterfaceAddress iface = j->second;
 
               Ptr<Packet> packet = Create<Packet>();
 
