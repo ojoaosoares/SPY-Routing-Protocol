@@ -200,7 +200,11 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           m_neighbors.AddNotForward(inverse, lastHop);
 
           AddParityPath(origin, disHdr.GetPathId(), disHdr.GetParity());
-          CheckParityPathsTimer.Schedule (Seconds (1));
+          
+          if (!CheckParityPathsTimer.IsRunning())
+          {
+              CheckParityPathsTimer.Schedule(Seconds(1));
+          }
       
           if (dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
             {

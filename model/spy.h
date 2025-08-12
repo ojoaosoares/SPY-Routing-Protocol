@@ -123,6 +123,7 @@ namespace ns3 {
 
         Timer HelloIntervalTimer;
         Timer CheckQueueTimer;
+        Timer CheckParityPathsTimer;
         uint8_t LocationServiceName;
         PositionTable m_neighbors;
         bool PerimeterMode;
@@ -136,7 +137,6 @@ namespace ns3 {
         int path_id = 0;
 
         // parity map
-        Timer CheckParityPathsTimer;
         void CheckParityPaths ();
         std::map<Ipv4Address, std::tuple<uint8_t, uint8_t, Time>> parity_paths;
     };
