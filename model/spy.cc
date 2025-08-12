@@ -576,9 +576,10 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
         Position.y = hdr.GetOriginPosy ();
         InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
         Ipv4Address sender = inetSourceAddr.GetIpv4 ();
-        Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
+        // Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
 
-        UpdateRouteToNeighbor (sender, receiver, Position);
+        NS_LOG_DEBUG("Position of " << sender << " is " << Position.x << ", " << Position.y);
+        UpdateRouteToNeighbor (sender, Position);
       }
 
       else if (tHeader.Get() == SPY_TYPE_IN_ANALYSIS)
@@ -801,7 +802,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
 
 
     void
-    RoutingProtocol::UpdateRouteToNeighbor (Ipv4Address sender, Ipv4Address receiver, Vector Pos)
+    RoutingProtocol::UpdateRouteToNeighbor (Ipv4Address sender, Vector Pos)
     {
       m_neighbors.AddEntry (sender, Pos);
 
