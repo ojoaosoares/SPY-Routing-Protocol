@@ -185,35 +185,36 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
               return false;
             }
           
-          DisjointHeader disHdr;
+          
           if (tHeader.Get () == SPY_TYPE_POS)
           {
               PositionHeader phdr;
               packet->RemoveHeader (phdr);
-            
+
+              DisjointHeader disHdr;
               packet->RemoveHeader(disHdr);
-          }
 
-          Ipv4Address lastHop = disHdr.GetLastHop();
+              Ipv4Address lastHop = disHdr.GetLastHop();
 
-          PacketKey inverse = std::make_tuple(origin, dst, disHdr.GetPathId() == 0 ? 1 : 0);
-          m_neighbors.AddNotForward(inverse, lastHop);
+              PacketKey inverse = std::make_tuple(origin, dst, disHdr.GetPathId() == 0 ? 1 : 0);
+              m_neighbors.AddNotForward(inverse, lastHop);
 
-          AddParityPath(origin, disHdr.GetPathId(), disHdr.GetParity());
+              AddParityPath(origin, disHdr.GetPathId(), disHdr.GetParity());
           
-          if (!CheckParityPathsTimer.IsRunning())
-          {
-              CheckParityPathsTimer.Schedule(Seconds(1));
+              if (!CheckParityPathsTimer.IsRunning())
+              {
+                  CheckParityPathsTimer.Schedule(Seconds(1));
+              }
           }
       
           if (dst != m_ipv4->GetAddress (1, 0).GetBroadcast ())
-            {
+          {
               NS_LOG_LOGIC ("Unicast local delivery to " << dst);
-            }
+          }
           else
-            {
-    //          NS_LOG_LOGIC ("Broadcast local delivery to " << dst);
-            }
+          {
+              NS_LOG_LOGIC ("Broadcast local delivery to " << dst);
+          }
 
           lcb (packet, header, iif);
           return true;
@@ -531,7 +532,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
     {
       NS_LOG_FUNCTION (this << socket);
 
-      NS_LOG_DEBUG("Control packet recevied");
+      NS_LOG_INFO ("Control packet received");
       Address sourceAddress;
       Ptr<Packet> packet = socket->RecvFrom (sourceAddress);
 
@@ -877,7 +878,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
         {
           return;
         }
-      if (l3->GetNAddresses ((interface) == 1))
+      if (l3->GetNAddresses (interface) == 1)
         {
           Ipv4InterfaceAddress iface = l3->GetAddress (interface, 0);
           Ptr<Socket> socket = FindSocketWithInterfaceAddress (iface);
@@ -1020,6 +1021,8 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
             {
               destination = iface.GetBroadcast ();
             }
+
+          NS_LOG_INFO ("Node " << m_ipv4->GetAddress(1,0).GetLocal() << " sending HELLO to " << destination);
           socket->SendTo (packet, 0, InetSocketAddress (destination, SPY_PORT));
 
         }
