@@ -530,6 +530,8 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
     RoutingProtocol::RecvSPY (Ptr<Socket> socket)
     {
       NS_LOG_FUNCTION (this << socket);
+
+      NS_LOG_DEBUG("Control packet recevied");
       Address sourceAddress;
       Ptr<Packet> packet = socket->RecvFrom (sourceAddress);
 
@@ -539,6 +541,24 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       {
           NS_LOG_DEBUG ("SPY message " << packet->GetUid () << " with unknown type received: " << tHeader.Get () << ". Ignored");
           return;
+      }
+
+      if (tHeader.Get() == SPY_TYPE_HELLO)
+      {
+
+        HelloHeader hdr;
+        packet->RemoveHeader (hdr);
+        Vector Position;
+        Position.x = hdr.GetOriginPosx ();
+        Position.y = hdr.GetOriginPosy ();
+        InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
+        Ipv4Address sender = inetSourceAddr.GetIpv4 ();
+        // Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
+
+        NS_LOG_DEBUG("Position of " << sender << " is " << Position.x << ", " << Position.y);
+        UpdateRouteToNeighbor (sender, Position);
+
+        return;
       }
 
       if (tHeader.Get() == SPY_TYPE_TAKE_SHORTCUT)
@@ -566,23 +586,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
           
       }
 
-      if (tHeader.Get() == SPY_TYPE_HELLO)
-      {
-
-        HelloHeader hdr;
-        packet->RemoveHeader (hdr);
-        Vector Position;
-        Position.x = hdr.GetOriginPosx ();
-        Position.y = hdr.GetOriginPosy ();
-        InetSocketAddress inetSourceAddr = InetSocketAddress::ConvertFrom (sourceAddress);
-        Ipv4Address sender = inetSourceAddr.GetIpv4 ();
-        // Ipv4Address receiver = m_socketAddresses[socket].GetLocal ();
-
-        NS_LOG_DEBUG("Position of " << sender << " is " << Position.x << ", " << Position.y);
-        UpdateRouteToNeighbor (sender, Position);
-      }
-
-      else if (tHeader.Get() == SPY_TYPE_IN_ANALYSIS)
+      if (tHeader.Get() == SPY_TYPE_IN_ANALYSIS)
       {
         PathId piHdr;
         NeighIntersection niHdr;
@@ -798,6 +802,7 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
 
           m_neighbors.AddNotSend(key, tsHdr.GetShortcut());
       }
+
     }
 
 
