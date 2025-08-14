@@ -1073,47 +1073,87 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       NS_LOG_FUNCTION (this << header << (oif ? oif->GetIfIndex () : 0));
 
       if (!p)
-        {
+      {
           return LoopbackRoute (header, oif);     // later
-        }
+      }
+
       if (m_socketAddresses.empty ())
-        {
+      {
           sockerr = Socket::ERROR_NOROUTETOHOST;
           NS_LOG_LOGIC ("No spy interfaces");
           Ptr<Ipv4Route> route;
           return route;
-        }
-      sockerr = Socket::ERROR_NOTERROR;
-      Ptr<Ipv4Route> route = Create<Ipv4Route> ();
+      }
+
       Ipv4Address dst = header.GetDestination ();
+
+      Ptr<Packet> copy = p->Copy();
+
+      TypeHeader typeHdr; // Checking if its a hello message
+      if (copy->PeekHeader(typeHdr))
+      {
+          copy->RemoveHeader(typeHdr);
+
+          if (!typeHdr.IsValid ())
+          {
+              NS_LOG_DEBUG ("SPY message " << copy->GetUid () << " with unknown type received: " << typeHdr.Get () << ". Drop");
+              sockerr = Socket::ERROR_NOROUTETOHOST;
+              return Ptr<Ipv4Route> ();
+          }
+          if (typeHdr.Get () != SPY_TYPE_HELLO)
+          {
+              NS_LOG_DEBUG ("Not a hello message. Drop");
+              sockerr = Socket::ERROR_NOROUTETOHOST;
+              return Ptr<Ipv4Route> ();
+          }          
+
+          Ipv4Address ifaceBroadcast = m_ipv4->GetAddress (1, 0).GetBroadcast ();
+
+          if (dst.IsBroadcast () || dst == ifaceBroadcast)
+          {
+              Ptr<Ipv4Route> broadcastRoute = Create<Ipv4Route> ();
+              broadcastRoute->SetDestination (dst);
+              broadcastRoute->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
+              broadcastRoute->SetGateway (Ipv4Address::GetZero ()); // No gateway for broadcast
+              broadcastRoute->SetOutputDevice (m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (broadcastRoute->GetSource ())));
+
+    
+              // NS_LOG_DEBUG ("Broadcast packet: sending to all nodes in subnet");
+
+              return broadcastRoute;
+          }
+      }
+
+      sockerr = Socket::ERROR_NOTERROR;      
 
       Vector dstPos = Vector (1, 0, 0);
 
       if (!(dst == m_ipv4->GetAddress (1, 0).GetBroadcast ()))
-        {
+      {
           dstPos = m_locationService->GetPosition (dst);
-        }
+      }
 
       if (CalculateDistance (dstPos, m_locationService->GetInvalidPosition ()) == 0 && m_locationService->IsInSearch (dst))
-        {
+      {
           DeferredRouteOutputTag tag;
           if (!p->PeekPacketTag (tag))
-            {
+          {
               p->AddPacketTag (tag);
-            }
+          }
+
           return LoopbackRoute (header, oif);
-        }
+      }
 
       Vector myPos;
       Ptr<MobilityModel> MM = m_ipv4->GetObject<MobilityModel> ();
       myPos.x = MM->GetPosition ().x;
       myPos.y = MM->GetPosition ().y;  
 
-      Ipv4Address nextHop;
-
       uint8_t mypathid = GetAndChangePathId();
 
       PacketKey key = std::make_tuple(m_ipv4->GetAddress(1, 0).GetLocal(), header.GetDestination(), mypathid);
+
+      Ipv4Address nextHop;
 
       if(m_neighbors.isNeighbour(key, dst))
       {
@@ -1129,40 +1169,45 @@ NS_LOG_COMPONENT_DEFINE ("SpyRoutingProtocol");
       p->AddHeader(disHeader);
 
       if (nextHop != Ipv4Address::GetZero ())
-        {
+      {
+          Ptr<Ipv4Route> route = Create<Ipv4Route> ();
           NS_LOG_DEBUG ("Destination: " << dst);
 
           route->SetDestination (dst);
           if (header.GetSource () == Ipv4Address ("102.102.102.102"))
-            {
+          {
               route->SetSource (m_ipv4->GetAddress (1, 0).GetLocal ());
-            }
+          }
+
           else
-            {
+          {
               route->SetSource (header.GetSource ());
-            }
+          }
+
           route->SetGateway (nextHop);
           route->SetOutputDevice (m_ipv4->GetNetDevice (m_ipv4->GetInterfaceForAddress (route->GetSource ())));
           route->SetDestination (header.GetDestination ());
           NS_ASSERT (route != 0);
           NS_LOG_DEBUG ("Exist route to " << route->GetDestination () << " from interface " << route->GetSource ());
           if (oif != 0 && route->GetOutputDevice () != oif)
-            {
+          {
               NS_LOG_DEBUG ("Output device doesn't match. Dropped.");
               sockerr = Socket::ERROR_NOROUTETOHOST;
               return Ptr<Ipv4Route> ();
-            }
+          }
+
           return route;
-        }
+      }
       else
-        {
+      {
           DeferredRouteOutputTag tag;
           if (!p->PeekPacketTag (tag))
-            {
+          {
               p->AddPacketTag (tag); 
-            }
+          }
+
           return LoopbackRoute (header, oif);     //in RouteInput the recovery-mode is called
-        }
+      }
 
     }
 

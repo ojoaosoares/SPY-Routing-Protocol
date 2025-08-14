@@ -18,7 +18,7 @@ namespace ns3 {
     {
       SPY_TYPE_HELLO  = 1,         //!< SPY_TYPE_HELLO
       SPY_TYPE_POS = 2,            //!< SPY_TYPE_POS
-      SPY_TYPE_DISJOINT            //!< SPY_TYPE_DISJOINT
+      SPY_TYPE_DISJOINT = 3            //!< SPY_TYPE_DISJOINT
     };
 
     /**
