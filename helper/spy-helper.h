@@ -30,10 +30,10 @@ namespace ns3 {
  * \ingroup spy
  * \brief Helper class that adds SPY routing to nodes.
  */
-class GpsrHelper : public Ipv4RoutingHelper
+class SpyHelper : public Ipv4RoutingHelper
 {
 public:
-  GpsrHelper ();
+  SpyHelper ();
 
   /**
    * \internal
@@ -42,7 +42,7 @@ public:
    * This method is mainly for internal use by the other helpers;
    * clients are expected to free the dynamic memory allocated by this method
    */
-  GpsrHelper* Copy (void) const;
+  SpyHelper* Copy (void) const;
 
   /**
    * \param node the node on which the routing protocol will run

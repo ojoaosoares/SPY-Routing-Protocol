@@ -28,20 +28,20 @@
 
 namespace ns3 {
 
-GpsrHelper::GpsrHelper ()
+SpyHelper::SpyHelper ()
   : Ipv4RoutingHelper ()
 {
   m_agentFactory.SetTypeId ("ns3::spy::RoutingProtocol");
 }
 
-GpsrHelper*
-GpsrHelper::Copy (void) const
+SpyHelper*
+SpyHelper::Copy (void) const
 {
-  return new GpsrHelper (*this);
+  return new SpyHelper (*this);
 }
 
 Ptr<Ipv4RoutingProtocol>
-GpsrHelper::Create (Ptr<Node> node) const
+SpyHelper::Create (Ptr<Node> node) const
 {
   //Ptr<Ipv4L4Protocol> ipv4l4 = node->GetObject<Ipv4L4Protocol> ();
   Ptr<spy::RoutingProtocol> spy = m_agentFactory.Create<spy::RoutingProtocol> ();
@@ -52,14 +52,14 @@ GpsrHelper::Create (Ptr<Node> node) const
 }
 
 void
-GpsrHelper::Set (std::string name, const AttributeValue &value)
+SpyHelper::Set (std::string name, const AttributeValue &value)
 {
   m_agentFactory.Set (name, value);
 }
 
 
 void 
-GpsrHelper::Install (void) const
+SpyHelper::Install (void) const
 {
   NodeContainer c = NodeContainer::GetGlobal ();
   for (NodeContainer::Iterator i = c.Begin (); i != c.End (); ++i)
